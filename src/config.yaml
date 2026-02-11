@@ -1,0 +1,15 @@
+experiment:
+  reagents:
+    acetone_stock_molarity: 4.0 # M
+    hcl_stock_molarity: 1.0 # M
+    iodine_stock_molarity: 0.005 # M
+  parameters:
+    path_length_cm: 1.0
+    wavelength_nm: 410 # Absorbance peak for I2
+    extinction_coefficient: 900 # M-1cm-1 approx for Iodine at 400-410nm
+    # Default volumes in mL for a standard run
+    default_volumes:
+      acetone: 10.0
+      hcl: 10.0
+      iodine: 10.0
+      water: 20.0
