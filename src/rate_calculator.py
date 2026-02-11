@@ -3,17 +3,33 @@ import numpy as np
 from scipy.stats import linregress
 import yaml
 import os
+import sys
+
+# Ensure src is in path if running from root
+if 'src' not in sys.path:
+    sys.path.append('src')
+
+try:
+    from visualizer import KineticVisualizer
+except ImportError:
+    # Fallback if running from src directory directly
+    try:
+        from src.visualizer import KineticVisualizer
+    except ImportError:
+        print("Warning: could not import KineticVisualizer")
+        KineticVisualizer = None
 
 def load_config(config_path="src/config.yaml"):
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
 class KineticAnalyzer:
-    def __init__(self, filepath, path_length=1.0, epsilon=900):
+    def __init__(self, filepath, path_length=1.0, epsilon=900, output_dir="output/plots"):
         self.filepath = filepath
         self.data = pd.read_csv(filepath)
         self.path_length = path_length
         self.epsilon = epsilon
+        self.output_dir = output_dir
         
         # Robust column handling
         self._normalize_columns()
@@ -55,6 +71,13 @@ class KineticAnalyzer:
             self.data['Time_s'], self.data['concentration']
         )
         
+        # Visualization Hook
+        if KineticVisualizer:
+            viz = KineticVisualizer(output_dir=self.output_dir)
+            filename_base = os.path.splitext(os.path.basename(self.filepath))[0]
+            plot_path = viz.plot_kinetics(self.data, slope, intercept, filename_base)
+            print(f"Generated plot: {plot_path}")
+
         # Rate is negative slope
         rate = -slope
         return rate, r_value**2
@@ -63,12 +86,22 @@ if __name__ == "__main__":
     # Example usage logic from main
     try:
         config = load_config()
-        # Create a dummy call standard if file exists, else just print usage
-        # analyzer = KineticAnalyzer("data/raw_csv/test.csv", 
-        #                            path_length=config['experiment']['parameters']['path_length_cm'],
-        #                            epsilon=config['experiment']['parameters'].get('extinction_coefficient', 900))
-        # rate, r2 = analyzer.calculate_rate()
-        # print(f"Rate: {rate:.2e} M/s, R^2: {r2:.4f}")
-        pass
+        # Find all CSVs in data/raw_csv
+        data_dir = "data/raw_csv"
+        if os.path.exists(data_dir):
+            for filename in os.listdir(data_dir):
+                if filename.endswith(".csv"):
+                    filepath = os.path.join(data_dir, filename)
+                    print(f"Processing {filename}...")
+                    analyzer = KineticAnalyzer(
+                        filepath, 
+                        path_length=config['experiment']['parameters']['path_length_cm'],
+                        epsilon=config['experiment']['parameters'].get('extinction_coefficient', 900)
+                    )
+                    rate, r2 = analyzer.calculate_rate()
+                    print(f"  Rate: {rate:.2e} M/s, R^2: {r2:.4f}")
+        else:
+            print(f"Data directory {data_dir} not found.")
+
     except Exception as e:
         print(f"Error: {e}")
