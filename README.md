@@ -1,7 +1,5 @@
 # Experiment 5: Iodination of Acetone - Kinetic Investigation
 
-**Research-Founder Mode Architecture**
-
 ## 1. Project Overview
 
 This repository hosts a "System" approach to the classic acid-catalysed iodination of acetone. It is architected into three layers to maximise pedagogical, industrial, and scientific leverage:
