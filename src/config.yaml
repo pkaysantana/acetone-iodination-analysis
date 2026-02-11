@@ -3,6 +3,7 @@ experiment:
     acetone_stock_molarity: 4.0 # M
     hcl_stock_molarity: 1.0 # M
     iodine_stock_molarity: 0.005 # M
+    acid_anion: "Cl-" # Relevant for salt effect (Hofmeister series) analysis
   parameters:
     path_length_cm: 1.0
     wavelength_nm: 410 # Absorbance peak for I2
