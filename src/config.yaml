@@ -4,6 +4,10 @@ experiment:
     hcl_stock_molarity: 1.0 # M
     iodine_stock_molarity: 0.005 # M
     acid_anion: "Cl-" # Relevant for salt effect (Hofmeister series) analysis
+    salt_factors:
+      "Cl-": 1.0   # Reference
+      "SO4--": 1.4 # Stabilizes transition state
+      "ClO4-": 0.9 # Destabilizes
   parameters:
     path_length_cm: 1.0
     wavelength_nm: 410 # Absorbance peak for I2

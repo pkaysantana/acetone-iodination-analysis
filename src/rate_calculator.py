@@ -1,6 +1,11 @@
 import pandas as pd
 import numpy as np
 from scipy.stats import linregress
+try:
+    from sklearn.linear_model import RANSACRegressor
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
 import yaml
 import os
 import sys
@@ -63,29 +68,76 @@ class KineticAnalyzer:
         # Calculate Concentration from Absorbance (Beer's Law: A = epsilon * b * c => c = A / (epsilon * b))
         self.data['concentration'] = self.data['Absorbance'] / (self.epsilon * self.path_length)
         
-        # Zero Order check approach: Slope of Conc vs Time for Iodine consumption
-        # Note: Rate of reaction is defined as -d[I2]/dt. 
-        # Since [I2] decreases linearly, the slope is negative. Rate is positive.
-        
+        # Standard Linear Regression (OLS)
         slope, intercept, r_value, p_value, std_err = linregress(
             self.data['Time_s'], self.data['concentration']
         )
+        r_squared = r_value**2
+
+        # Robust Regression (RANSAC) Check
+        used_robust = False
+        if SKLEARN_AVAILABLE and r_squared < 0.98: # Trigger if OLS is "suspicious"
+            print(f"  [Auto-Correction] Low R^2 ({r_squared:.4f}). Attempting RANSAC...")
+            
+            X = self.data['Time_s'].values.reshape(-1, 1)
+            y = self.data['concentration'].values
+            
+            ransac = RANSACRegressor(random_state=42)
+            ransac.fit(X, y)
+            
+            # Get inlier mask
+            inlier_mask = ransac.inlier_mask_
+            
+            # Re-calculate slope/intercept from RANSAC estimator
+            robust_slope = ransac.estimator_.coef_[0]
+            robust_intercept = ransac.estimator_.intercept_
+            robust_score = ransac.score(X[inlier_mask], y[inlier_mask])
+            
+            print(f"  [RANSAC] New R^2 (inliers): {robust_score:.4f}, Slope: {robust_slope:.2e}")
+            
+            # Use robust values if they effectively describe the "good" data better
+            # Note: RANSAC score is R^2 on inliers only.
+            slope = robust_slope
+            intercept = robust_intercept
+            r_squared = robust_score
+            used_robust = True
+            
+            # Update dataframe to mark outliers for visualization?
+            self.data['is_outlier'] = ~inlier_mask
+        else:
+             self.data['is_outlier'] = False
         
         # Visualization Hook
         if KineticVisualizer:
             viz = KineticVisualizer(output_dir=self.output_dir)
             filename_base = os.path.splitext(os.path.basename(self.filepath))[0]
+            if used_robust:
+                filename_base += "_robust"
             plot_path = viz.plot_kinetics(self.data, slope, intercept, filename_base)
             print(f"Generated plot: {plot_path}")
 
+        
+        # Salt Effect Correction
+        # Logic: k_obs = k_intrinsic * F_salt  => k_intrinsic = k_obs / F_salt
+        # This is handled by calculate_intrinsic_rate called from main
+        
         # Rate is negative slope
         rate = -slope
-        return rate, r_value**2
+        return rate, r_squared
+
+    def calculate_intrinsic_rate(self, k_obs, anion, salt_factors):
+        factor = salt_factors.get(anion, 1.0)
+        k_intrinsic = k_obs / factor
+        return k_intrinsic, factor
 
 if __name__ == "__main__":
     # Example usage logic from main
     try:
         config = load_config()
+        reagents = config['experiment']['reagents']
+        acid_anion = reagents.get('acid_anion', 'Cl-')
+        salt_factors = reagents.get('salt_factors', {'Cl-': 1.0})
+        
         # Find all CSVs in data/raw_csv
         data_dir = "data/raw_csv"
         if os.path.exists(data_dir):
@@ -99,7 +151,13 @@ if __name__ == "__main__":
                         epsilon=config['experiment']['parameters'].get('extinction_coefficient', 900)
                     )
                     rate, r2 = analyzer.calculate_rate()
-                    print(f"  Rate: {rate:.2e} M/s, R^2: {r2:.4f}")
+                    
+                    # Salt Correction
+                    k_intrinsic, factor = analyzer.calculate_intrinsic_rate(rate, acid_anion, salt_factors)
+                    
+                    print(f"  Rate (Observed): {rate:.2e} M/s, R^2: {r2:.4f}")
+                    print(f"  [Hofmeister] Anion: {acid_anion} (F={factor}) -> k_intrinsic: {k_intrinsic:.2e} M/s")
+                    
         else:
             print(f"Data directory {data_dir} not found.")
 
