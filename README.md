@@ -1,77 +1,55 @@
-# Experiment 5: Iodination of Acetone - Kinetic Investigation
+# Kinetic Engine: Experiment 5 (Iodination of Acetone)
 
-## 1. Project Overview
+## Overview
 
-This repository hosts a "System" approach to the classic acid-catalysed iodination of acetone. It is architected into three layers to maximise pedagogical, industrial, and scientific leverage:
+This **Kinetic Engine** is an automated analysis pipeline designed for Experiment 5. It transforms raw spectrophotometer data into publication-ready kinetic reports. It features **Automatic Rate Calculation**, **Salt Effect Normalisation** (Hofmeister Series), and **Robust Regression (RANSAC)** to handle experimental noise.
 
-* **Layer A (Scientific)**: rigorous mechanistic decoupling of rate laws (Pseudo-Zero-Order w.r.t. $I_2$).
-* **Layer B (Engineering)**: A Python-based "Kinetic Engine" for automated data processing and Arrhenius modelling.
-* **Layer C (Strategic)**: Analysis of industrial scalability (tear gas synthesis, process control) and innovation loops (salt effects).
+## Quick Start
 
-## 2. Directory Structure
+1. **Drop Data**: Place your `.csv` files in `data/raw_csv/`.
+2. **Configure**: Edit `src/config.yaml` if you changed stock solution molarities.
+3. **Run (CLI)**: Double-click `run_analysis.bat`.
+4. **Run (Web Dashboard)**:
 
-* `data/`:
-  * `raw_csv/`: Place spectrometer output CSVs here.
-  * `metadata/`: Store temperature logs and conditions.
-* `src/`:
-  * `rate_calculator.py`: Core logic for determining rates ($k_{obs}$) from absorbance data.
-  * `arrhenius_plotter.py`: Calculates Activation Energy ($E_a$) and Frequency Factor ($A$).
-  * `config.yaml`: Central experiment configuration (molarities, extinction coefficients).
-* `output/`: Generated plots and reports.
+    ```bash
+    # 1. Activate Environment
+    # Windows:
+    .\.venv\Scripts\activate
+    # Mac/Linux:
+    source .venv/bin/activate
+    
+    # 2. Launch (Robust command)
+    python -m streamlit run src/dashboard.py
+    ```
 
-## 3. Installation
+5. **View Report**: Open `output/reports/final_report.md`.
 
-Ensure you have Python 3.9+ installed.
+---
 
-```bash
-pip install pandas numpy scipy pyyaml matplotlib
-```
+## Naming Convention (CRITICAL)
 
-## 4. Usage
+The orchestrator relies on filenames to extract temperature data for the Arrhenius plot. You **MUST** include the temperature in Kelvin in the filename.
 
-### Step 1: Configuration
+- ✅ **Good**: `run_298K.csv`, `acetone_308K_trial1.csv`
+- ❌ **Bad**: `trial1.csv`, `monday_lab.csv`
 
-Edit `src/config.yaml` to match your specific conditions:
+---
 
-```yaml
-experiment:
-  reagents:
-    acetone_stock_molarity: 4.0
-    acid_anion: "Cl-" # Important for salt effect analysis
-  parameters:
-    wavelength_nm: 410
-    extinction_coefficient: 900 # Update based on calibration
-```
+## Directory Structure
 
-### Step 2: Data Ingestion
+- `data/raw_csv/`: **INPUT**. Place your experimental files here.
+- `data/examples/`: Contains synthetic demo data (used if raw_csv is empty).
+- `output/plots/`: Generated kinetic graphs and Arrhenius plot.
+- `output/reports/`: Final Markdown summary.
+- `src/`: Source code (`config.yaml`, `rate_calculator.py`, etc.).
 
-Drop your raw CSV files into `data/raw_csv/`.
+## Configuration (`src/config.yaml`)
 
-* **Required Format**: Columns must include `Time (s)` and `Absorbance`.
-* *Note*: The engine auto-detects column variations like `Time_s`.
+- **Reagents**: Set molarities of Acetone, HCl, and Iodine stocks.
+- **Anion Effect**: Change `acid_anion` to `Cl-`, `SO4--`, or `ClO4-` to automatically apply Hofmeister corrections.
 
-### Step 3: Run Analysis
+## Robustness
 
-**Calculate Reaction Rates:**
+If your data is noisy ($R^2 < 0.98$), the engine automatically engages **RANSAC** (Robust Regression) to ignore outliers (bubbles, mixing artifacts) and salvage the rate constant.
 
-```bash
-python src/rate_calculator.py
-```
-
-*This will process all CSVs in the data folder and output rates ($M/s$) and linearity ($R^2$).*
-
-**Generate Arrhenius Plot:**
-
-```bash
-python src/arrhenius_plotter.py
-```
-
-*Requires temperature data points to be manually input into the script or a separate metadata file (feature incoming).*
-
-## 5. Strategic Insights
-
-See `output/reports/strategic_analysis.md` for a deep dive into:
-
-* **Pedagogical Leverage**: Using "Zero Order" results to challenge collision theory mental models.
-* **Industrial Application**: Controlling hazardous halogenation via distinct pH modulation.
-* **Innovation Loop**: Future improvements for "Salt Effect" variance and Stopped-Flow integration.
+---

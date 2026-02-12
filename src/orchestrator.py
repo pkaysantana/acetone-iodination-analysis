@@ -45,9 +45,24 @@ def main():
     data_dir = "data/raw_csv"
     csv_files = glob.glob(os.path.join(data_dir, "*.csv"))
     
+    if not csv_files:
+        print(f"\n[INFO] No data found in {data_dir}.")
+        print("       Checking 'data/examples/' for demonstration data...")
+        data_dir = "data/examples"
+        csv_files = glob.glob(os.path.join(data_dir, "*.csv"))
+        
+        if not csv_files:
+             print("\n[WARNING] No CSV files found in 'data/raw_csv/' or 'data/examples/'.")
+             print("           Please place your experimental data in 'data/raw_csv/'.")
+             print("           Filenames must contain the temperature (e.g., 'run_298K.csv').")
+             input("\nPress Enter to exit...")
+             return
+        else:
+            print(f"       Found {len(csv_files)} example files. Running in DEMO mode.")
+
     results = []
     
-    print(f"\nFound {len(csv_files)} files. Processing...")
+    print(f"\nFound {len(csv_files)} files in '{data_dir}'. Processing...")
     
     for filepath in csv_files:
         filename = os.path.basename(filepath)
